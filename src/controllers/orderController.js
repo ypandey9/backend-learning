@@ -1,89 +1,97 @@
-// Import models
+const mongoose = require("mongoose");
+
 const Order = require("../models/Order");
 const Product = require("../models/Product");
 
-
-// CREATE ORDER
 exports.createOrder = async (req, res) => {
+
+  // Start a database session
+  const session = await mongoose.startSession();
+
+  // Start transaction
+  session.startTransaction();
 
   try {
 
-    // Get user id from authentication middleware
     const userId = req.user._id;
 
-    // Extract items sent by client
     const { items } = req.body;
 
-    // This will store calculated total price
     let totalAmount = 0;
 
+    const orderItems = [];
 
-    // Loop through each item
     for (const item of items) {
 
-      // Find product from database
-      const product = await Product.findById(item.product);
+      // Find product inside transaction session
+      const product = await Product.findById(item.product).session(session);
 
       if (!product) {
 
-        return res.status(404).json({
-          message: "Product not found"
-        });
+        throw new Error("Product not found");
 
       }
 
-      // Check stock availability
       if (product.stock < item.quantity) {
 
-        return res.status(400).json({
-          message: "Not enough stock"
-        });
+        throw new Error("Not enough stock");
 
       }
 
-      // Calculate total price
+      // Calculate total
       totalAmount += product.price * item.quantity;
 
+      // Push item with price snapshot
+      orderItems.push({
+
+        product: product._id,
+        quantity: item.quantity,
+        price: product.price
+
+      });
+
+      // Reduce stock
+      product.stock -= item.quantity;
+
+      await product.save({ session });
+
     }
 
-
-    // Create order document
-    const order = await Order.create({
+    // Create order inside transaction
+    const order = await Order.create([{
 
       user: userId,
-
-      items: items,
-
+      items: orderItems,
       totalAmount
 
-    });
+    }], { session });
 
+    // Commit transaction
+    await session.commitTransaction();
 
-    // Reduce product stock
-    for (const item of items) {
-
-      await Product.findByIdAndUpdate(
-        item.product,
-        {
-          $inc: { stock: -item.quantity }
-        }
-      );
-
-    }
-
+    session.endSession();
 
     res.status(201).json({
+
       message: "Order placed successfully",
-      order
+      order: order[0]
+
     });
 
   }
 
   catch (error) {
 
+    // Rollback transaction
+    await session.abortTransaction();
+
+    session.endSession();
+
     res.status(500).json({
-      message: "Server error",
+
+      message: "Order failed",
       error: error.message
+
     });
 
   }
