@@ -55,6 +55,26 @@ exports.login = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN }
     );
 
+    const accessToken = jwt.sign(
+  { id: user._id },
+  process.env.JWT_SECRET,
+  { expiresIn: process.env.JWT_EXPIRES_IN }
+);
+
+const refreshToken = jwt.sign(
+  { id: user._id },
+  process.env.JWT_REFRESH_SECRET,
+  { expiresIn: process.env.JWT_REFRESH_EXPIRES }
+);
+
+user.refreshToken = refreshToken;
+await user.save();
+
+res.json({
+  accessToken,
+  refreshToken
+});
+
     res.json({
       message: "Login successful",
       token
@@ -67,4 +87,55 @@ exports.login = async (req, res) => {
       error: error.message
     });
   }
+};
+
+exports.refresh = async (req, res) => {
+
+  const { refreshToken } = req.body;
+
+  if (!refreshToken)
+    return res.status(401).json({ message: "No refresh token" });
+
+  try {
+
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.JWT_REFRESH_SECRET
+    );
+
+    const user = await User.findById(decoded.id);
+
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(403).json({ message: "Invalid refresh token" });
+    }
+
+    const newAccessToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN }
+    );
+
+    res.json({ accessToken: newAccessToken });
+
+  } catch (error) {
+
+    res.status(403).json({ message: "Invalid refresh token" });
+
+  }
+
+};
+
+exports.logout = async (req, res) => {
+
+  const { refreshToken } = req.body;
+
+  const user = await User.findOne({ refreshToken });
+
+  if (user) {
+    user.refreshToken = null;
+    await user.save();
+  }
+
+  res.json({ message: "Logged out successfully" });
+
 };

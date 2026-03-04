@@ -1,3 +1,5 @@
+// Import product routes
+const productRoutes = require("./routes/productRoutes");
 const express = require("express");
 const cookieParser = require("cookie-parser");
 
@@ -13,6 +15,9 @@ app.get("/", (req, res) => {
 const authRoutes = require("./routes/authRoutes");
 
 app.use("/api/auth", authRoutes);
+
+// Mount routes under /api/products
+app.use("/api/products", productRoutes);
 
 
 const { protect } = require("./middleware/authMiddleware");
