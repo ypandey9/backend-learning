@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const Order = require("../models/Order");
 const Product = require("../models/Product");
+const orderQueue = require("../queues/orderQueue");
 
 exports.createOrder = async (req, res) => {
 
@@ -66,6 +67,12 @@ exports.createOrder = async (req, res) => {
       totalAmount
 
     }], { session });
+
+    // Add background job
+await orderQueue.add("sendOrderEmail", {
+  orderId: order._id,
+  email: req.user.email
+});
 
     // Commit transaction
     await session.commitTransaction();

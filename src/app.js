@@ -5,6 +5,7 @@ const productRoutes = require("./routes/productRoutes");
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
+//const orderQueue = require("../queues/orderQueue");
 
 
 const app = express();

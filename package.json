@@ -21,6 +21,7 @@
   "homepage": "https://github.com/ypandey9/backend-learning#readme",
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "bullmq": "^5.70.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
