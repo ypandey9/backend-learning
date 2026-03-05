@@ -21,7 +21,18 @@ const {
 
 
 // Route to get all products
+/**
+ * @swagger
+ * /api/products:
+ *   get:
+ *     summary: Get all products
+ *     tags: [Products]
+ *     responses:
+ *       200:
+ *         description: List of products
+ */
 router.get("/", getProducts);
+
 
 
 // Route to get single product
@@ -34,6 +45,18 @@ router.get("/:id", getProductById);
 
 // Route to delete product
 //router.delete("/:id", deleteProduct);
+/**
+ * @swagger
+ * /api/products:
+ *   post:
+ *     summary: Create product
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       201:
+ *         description: Product created
+ */
 
 router.post("/", protect, authorize("admin"), createProduct);
 
