@@ -1,6 +1,6 @@
 // Import Product model to interact with database
 const Product = require("../models/Product");
-
+const redisClient = require("../config/redis");
 
 // CREATE PRODUCT
 exports.createProduct = async (req, res) => {
@@ -17,6 +17,9 @@ exports.createProduct = async (req, res) => {
       stock,
       description
     });
+
+    // Clear cache
+await redisClient.del("products");
 
     // Send response back to client
     res.status(201).json({
@@ -39,78 +42,121 @@ exports.createProduct = async (req, res) => {
 
 
 // GET ALL PRODUCTS
+// exports.getProducts = async (req, res) => {
+
+//   try {
+
+//     // Extract query parameters from URL
+//     const page = parseInt(req.query.page) || 1; 
+//     const limit = parseInt(req.query.limit) || 10;
+
+//     // Calculate how many documents to skip
+//     const skip = (page - 1) * limit;
+
+//     // Filtering object
+//     const filter = {};
+
+//     // Price filtering
+//     if (req.query.minPrice || req.query.maxPrice) {
+
+//       filter.price = {};
+
+//       if (req.query.minPrice) {
+//         filter.price.$gte = Number(req.query.minPrice);
+//       }
+
+//       if (req.query.maxPrice) {
+//         filter.price.$lte = Number(req.query.maxPrice);
+//       }
+
+//     }
+
+//     // Search by product name
+//     if (req.query.search) {
+
+//       filter.name = {
+//         $regex: req.query.search,
+//         $options: "i"
+//       };
+
+//     }
+
+//     // Sorting
+//     let sort = {};
+
+//     if (req.query.sort) {
+
+//       if (req.query.sort === "price") {
+//         sort.price = 1;
+//       }
+
+//       if (req.query.sort === "-price") {
+//         sort.price = -1;
+//       }
+
+//     }
+
+//     // Fetch products with pagination
+//     const products = await Product.find(filter)
+//       .sort(sort)
+//       .skip(skip)
+//       .limit(limit);
+
+//     // Count total documents
+//     const total = await Product.countDocuments(filter);
+
+//     res.json({
+
+//       page,
+//       limit,
+//       total,
+
+//       products
+
+//     });
+
+//   }
+
+//   catch (error) {
+
+//     res.status(500).json({
+//       message: "Server error"
+//     });
+
+//   }
+
+// };
+
 exports.getProducts = async (req, res) => {
 
   try {
 
-    // Extract query parameters from URL
-    const page = parseInt(req.query.page) || 1; 
-    const limit = parseInt(req.query.limit) || 10;
+    const cacheKey = "products";
 
-    // Calculate how many documents to skip
-    const skip = (page - 1) * limit;
+    // Check cache first
+    const cachedProducts = await redisClient.get(cacheKey);
 
-    // Filtering object
-    const filter = {};
+    if (cachedProducts) {
 
-    // Price filtering
-    if (req.query.minPrice || req.query.maxPrice) {
+      console.log("Serving from cache");
 
-      filter.price = {};
-
-      if (req.query.minPrice) {
-        filter.price.$gte = Number(req.query.minPrice);
-      }
-
-      if (req.query.maxPrice) {
-        filter.price.$lte = Number(req.query.maxPrice);
-      }
+      return res.json(JSON.parse(cachedProducts));
 
     }
 
-    // Search by product name
-    if (req.query.search) {
+    // Fetch from database
+    const products = await Product.find();
 
-      filter.name = {
-        $regex: req.query.search,
-        $options: "i"
-      };
+    // Store in redis cache
+    await redisClient.setEx(
+      cacheKey,
+      60, // cache for 60 seconds
+      JSON.stringify(products)
+    );
 
-    }
+    console.log("Serving from database");
 
-    // Sorting
-    let sort = {};
-
-    if (req.query.sort) {
-
-      if (req.query.sort === "price") {
-        sort.price = 1;
-      }
-
-      if (req.query.sort === "-price") {
-        sort.price = -1;
-      }
-
-    }
-
-    // Fetch products with pagination
-    const products = await Product.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit);
-
-    // Count total documents
-    const total = await Product.countDocuments(filter);
-
-    res.json({
-
-      page,
-      limit,
-      total,
-
-      products
-
-    });
+    res.json(products);
 
   }
 
@@ -123,7 +169,6 @@ exports.getProducts = async (req, res) => {
   }
 
 };
-
 
 // GET SINGLE PRODUCT
 exports.getProductById = async (req, res) => {
