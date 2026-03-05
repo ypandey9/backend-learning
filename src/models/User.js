@@ -19,6 +19,16 @@ const userSchema = new mongoose.Schema(
       required: true,
       minlength: 6
     },
+    
+    role: {
+  type: String,
+
+  // Only these roles are allowed
+  enum: ["user", "admin"],
+
+  // Default role when user registers
+  default: "user"
+},
 
   refreshToken: {
   type: String

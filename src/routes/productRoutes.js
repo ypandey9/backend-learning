@@ -1,3 +1,5 @@
+const { protect } = require("../middleware/authMiddleware");
+const { authorize } = require("../middleware/roleMiddleware");
 // Import express to create router
 const express = require("express");
 
@@ -15,7 +17,7 @@ const {
 
 
 // Route to create product
-router.post("/", createProduct);
+//router.post("/", createProduct);
 
 
 // Route to get all products
@@ -27,11 +29,17 @@ router.get("/:id", getProductById);
 
 
 // Route to update product
-router.put("/:id", updateProduct);
+//router.put("/:id", updateProduct);
 
 
 // Route to delete product
-router.delete("/:id", deleteProduct);
+//router.delete("/:id", deleteProduct);
+
+router.post("/", protect, authorize("admin"), createProduct);
+
+router.put("/:id", protect, authorize("admin"), updateProduct);
+
+router.delete("/:id", protect, authorize("admin"), deleteProduct);
 
 
 // Export router

@@ -57,6 +57,7 @@ exports.createOrder = async (req, res) => {
 
     }
 
+
     // Create order inside transaction
     const order = await Order.create([{
 
@@ -92,6 +93,65 @@ exports.createOrder = async (req, res) => {
       message: "Order failed",
       error: error.message
 
+    });
+
+  }
+  
+
+};
+
+  // GET ORDERS OF CURRENT USER
+
+exports.getMyOrders = async (req, res) => {
+
+  try {
+
+    // req.user comes from JWT middleware
+    const userId = req.user._id;
+
+    const orders = await Order.find({ user: userId })
+
+      // populate user details
+      .populate("user", "name email")
+
+      // populate product details inside items
+      .populate("items.product", "name price");
+
+    res.json(orders);
+
+  }
+
+  catch (error) {
+
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
+    });
+
+  }
+
+};
+
+// ADMIN: GET ALL ORDERS
+
+exports.getAllOrders = async (req, res) => {
+
+  try {
+
+    const orders = await Order.find()
+
+      .populate("user", "name email")
+
+      .populate("items.product", "name price");
+
+    res.json(orders);
+
+  }
+
+  catch (error) {
+
+    res.status(500).json({
+      message: "Server error"
     });
 
   }
