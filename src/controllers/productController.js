@@ -43,12 +43,78 @@ exports.getProducts = async (req, res) => {
 
   try {
 
-    // Fetch all products from database
-    const products = await Product.find();
+    // Extract query parameters from URL
+    const page = parseInt(req.query.page) || 1; 
+    const limit = parseInt(req.query.limit) || 10;
 
-    res.json(products);
+    // Calculate how many documents to skip
+    const skip = (page - 1) * limit;
 
-  } catch (error) {
+    // Filtering object
+    const filter = {};
+
+    // Price filtering
+    if (req.query.minPrice || req.query.maxPrice) {
+
+      filter.price = {};
+
+      if (req.query.minPrice) {
+        filter.price.$gte = Number(req.query.minPrice);
+      }
+
+      if (req.query.maxPrice) {
+        filter.price.$lte = Number(req.query.maxPrice);
+      }
+
+    }
+
+    // Search by product name
+    if (req.query.search) {
+
+      filter.name = {
+        $regex: req.query.search,
+        $options: "i"
+      };
+
+    }
+
+    // Sorting
+    let sort = {};
+
+    if (req.query.sort) {
+
+      if (req.query.sort === "price") {
+        sort.price = 1;
+      }
+
+      if (req.query.sort === "-price") {
+        sort.price = -1;
+      }
+
+    }
+
+    // Fetch products with pagination
+    const products = await Product.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+
+    // Count total documents
+    const total = await Product.countDocuments(filter);
+
+    res.json({
+
+      page,
+      limit,
+      total,
+
+      products
+
+    });
+
+  }
+
+  catch (error) {
 
     res.status(500).json({
       message: "Server error"
@@ -57,7 +123,6 @@ exports.getProducts = async (req, res) => {
   }
 
 };
-
 
 
 // GET SINGLE PRODUCT
