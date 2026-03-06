@@ -8,6 +8,7 @@ const rateLimit = require("express-rate-limit");
 //const orderQueue = require("../queues/orderQueue");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/swagger");
+const errorHandler = require("./middleware/errorMiddleware");
 
 
 const app = express();
@@ -62,5 +63,8 @@ app.get("/api/profile", protect, (req, res) => {
 });
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// Global Error Handler
+app.use(errorHandler);
 
 module.exports = app;
