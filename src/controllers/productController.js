@@ -1,248 +1,112 @@
 // Import Product model to interact with database
 const Product = require("../models/Product");
 const redisClient = require("../config/redis");
+const asyncHandler = require("../utils/asyncHandler");
 
 // CREATE PRODUCT
-exports.createProduct = async (req, res) => {
+exports.createProduct = asyncHandler(async (req, res) => {
 
-  try {
+  const { name, price, stock, description } = req.body;
 
-    // Extract fields sent from client request body
-    const { name, price, stock, description } = req.body;
+  const product = await Product.create({
+    name,
+    price,
+    stock,
+    description
+  });
 
-    // Create new product document in MongoDB
-    const product = await Product.create({
-      name,
-      price,
-      stock,
-      description
-    });
+  // Clear cached products
+  await redisClient.del("products");
 
-    // Clear cache
-await redisClient.del("products");
+  res.status(201).json({
+    message: "Product created",
+    product
+  });
 
-    // Send response back to client
-    res.status(201).json({
-      message: "Product created",
-      product
-    });
-
-  } catch (error) {
-
-    // If something fails return server error
-    res.status(500).json({
-      message: "Server error",
-      error: error.message
-    });
-
-  }
-
-};
+});
 
 
 
-// GET ALL PRODUCTS
-// exports.getProducts = async (req, res) => {
+exports.getProducts = asyncHandler(async (req, res) => {
 
-//   try {
+  const cacheKey = "products";
 
-//     // Extract query parameters from URL
-//     const page = parseInt(req.query.page) || 1; 
-//     const limit = parseInt(req.query.limit) || 10;
+  const cachedProducts = await redisClient.get(cacheKey);
 
-//     // Calculate how many documents to skip
-//     const skip = (page - 1) * limit;
+  if (cachedProducts) {
 
-//     // Filtering object
-//     const filter = {};
+    console.log("Serving from cache");
 
-//     // Price filtering
-//     if (req.query.minPrice || req.query.maxPrice) {
-
-//       filter.price = {};
-
-//       if (req.query.minPrice) {
-//         filter.price.$gte = Number(req.query.minPrice);
-//       }
-
-//       if (req.query.maxPrice) {
-//         filter.price.$lte = Number(req.query.maxPrice);
-//       }
-
-//     }
-
-//     // Search by product name
-//     if (req.query.search) {
-
-//       filter.name = {
-//         $regex: req.query.search,
-//         $options: "i"
-//       };
-
-//     }
-
-//     // Sorting
-//     let sort = {};
-
-//     if (req.query.sort) {
-
-//       if (req.query.sort === "price") {
-//         sort.price = 1;
-//       }
-
-//       if (req.query.sort === "-price") {
-//         sort.price = -1;
-//       }
-
-//     }
-
-//     // Fetch products with pagination
-//     const products = await Product.find(filter)
-//       .sort(sort)
-//       .skip(skip)
-//       .limit(limit);
-
-//     // Count total documents
-//     const total = await Product.countDocuments(filter);
-
-//     res.json({
-
-//       page,
-//       limit,
-//       total,
-
-//       products
-
-//     });
-
-//   }
-
-//   catch (error) {
-
-//     res.status(500).json({
-//       message: "Server error"
-//     });
-
-//   }
-
-// };
-
-exports.getProducts = async (req, res) => {
-
-  try {
-
-    const cacheKey = "products";
-
-    // Check cache first
-    const cachedProducts = await redisClient.get(cacheKey);
-
-    if (cachedProducts) {
-
-      console.log("Serving from cache");
-
-      return res.json(JSON.parse(cachedProducts));
-
-    }
-
-    // Fetch from database
-    const products = await Product.find();
-
-    // Store in redis cache
-    await redisClient.setEx(
-      cacheKey,
-      60, // cache for 60 seconds
-      JSON.stringify(products)
-    );
-
-    console.log("Serving from database");
-
-    res.json(products);
+    return res.json(JSON.parse(cachedProducts));
 
   }
 
-  catch (error) {
+  const products = await Product.find();
 
-    res.status(500).json({
-      message: "Server error"
-    });
+  await redisClient.setEx(
+    cacheKey,
+    60,
+    JSON.stringify(products)
+  );
 
-  }
+  console.log("Serving from database");
 
-};
+  res.json(products);
+
+});
+
 
 // GET SINGLE PRODUCT
-exports.getProductById = async (req, res) => {
+exports.getProductById = asyncHandler(async (req, res) => {
 
-  try {
+  const product = await Product.findById(req.params.id);
 
-    // req.params.id comes from URL like /products/:id
-    const product = await Product.findById(req.params.id);
-
-    // If product not found return 404
-    if (!product) {
-      return res.status(404).json({
-        message: "Product not found"
-      });
-    }
-
-    res.json(product);
-
-  } catch (error) {
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
+  if (!product) {
+    res.status(404);
+    throw new Error("Product not found");
   }
 
-};
+  res.json(product);
+
+});
 
 
 
 // UPDATE PRODUCT
-exports.updateProduct = async (req, res) => {
+exports.updateProduct = asyncHandler(async (req, res) => {
 
-  try {
+  const product = await Product.findByIdAndUpdate(
+    req.params.id,
+    req.body,
+    { new: true }
+  );
 
-    // find product and update with new values
-    const product = await Product.findByIdAndUpdate(
-      req.params.id, // product id
-      req.body,      // fields to update
-      { new: true }  // return updated document
-    );
-
-    res.json(product);
-
-  } catch (error) {
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
+  if (!product) {
+    res.status(404);
+    throw new Error("Product not found");
   }
 
-};
+  await redisClient.del("products");
 
+  res.json(product);
+
+});
 
 
 // DELETE PRODUCT
-exports.deleteProduct = async (req, res) => {
+exports.deleteProduct = asyncHandler(async (req, res) => {
 
-  try {
+  const product = await Product.findByIdAndDelete(req.params.id);
 
-    // delete product from database
-    await Product.findByIdAndDelete(req.params.id);
-
-    res.json({
-      message: "Product deleted"
-    });
-
-  } catch (error) {
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
+  if (!product) {
+    res.status(404);
+    throw new Error("Product not found");
   }
 
-};
+  await redisClient.del("products");
+
+  res.json({
+    message: "Product deleted"
+  });
+
+});
