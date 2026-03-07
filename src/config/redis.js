@@ -1,19 +1,16 @@
-// Import redis client
 const { createClient } = require("redis");
 
-// Create redis client instance
 const redisClient = createClient({
-  url: "redis://localhost:6379"
+  socket: {
+    host: process.env.REDIS_HOST || "redis",
+    port: process.env.REDIS_PORT || 6379
+  }
 });
 
-// Connect to redis
-redisClient.connect()
-  .then(() => {
-    console.log("Redis Connected");
-  })
-  .catch(err => {
-    console.error("Redis Error", err);
-  });
+redisClient.on("error", (err) => {
+  console.error("Redis error:", err);
+});
 
-// Export client
+redisClient.connect();
+
 module.exports = redisClient;

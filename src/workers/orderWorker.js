@@ -2,16 +2,15 @@ const { Worker } = require("bullmq");
 
 // Redis connection
 const connection = {
-  host: "127.0.0.1",
-  port: 6379
+  host: process.env.REDIS_HOST || "redis",
+  port: Number(process.env.REDIS_PORT) || 6379
 };
 
 // Worker listens for jobs
 const worker = new Worker(
-
   "orders",
 
-  async job => {
+  async (job) => {
 
     console.log("Processing order job:", job.data);
 
@@ -23,17 +22,19 @@ const worker = new Worker(
   },
 
   { connection }
-
 );
 
-worker.on("completed", job => {
-
+// Job completed
+worker.on("completed", (job) => {
   console.log(`Job ${job.id} completed`);
-
 });
 
+// Job failed
 worker.on("failed", (job, err) => {
-
   console.log(`Job ${job.id} failed`, err);
+});
 
+// Worker errors
+worker.on("error", (err) => {
+  console.error("Worker error:", err);
 });
