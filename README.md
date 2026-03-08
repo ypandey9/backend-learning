@@ -140,3 +140,17 @@ caching strategies
 background job processing
 
 containerized backend deployment
+
+## Project Structure
+
+src
+ ├── config        # database and redis configuration
+ ├── controllers   # business logic
+ ├── middleware    # auth, rate limit, error handling
+ ├── models        # mongoose schemas
+ ├── queues        # BullMQ queues
+ ├── routes        # API routes
+ ├── workers       # background workers
+ ├── utils         # helper utilities
+ ├── app.js
+ └── server.js
