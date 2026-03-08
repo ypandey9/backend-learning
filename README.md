@@ -154,3 +154,49 @@ src
  ├── utils         # helper utilities
  ├── app.js
  └── server.js
+
+ ## Example Requests
+
+ -- Register User
+
+ curl -X POST http://localhost:5000/api/auth/register \
+-H "Content-Type: application/json" \
+-d '{
+"name":"Test User",
+"email":"test@test.com",
+"password":"123456"
+}'
+
+-- Login
+
+curl -X POST http://localhost:5000/api/auth/login \
+-H "Content-Type: application/json"
+
+## Create Product (Admin)
+
+curl -X POST http://localhost:5000/api/products \
+-H "Authorization: Bearer TOKEN"
+
+## Features Implemented
+
+- [x] JWT Authentication
+- [x] Refresh Tokens
+- [x] Role Based Authorization
+- [x] MongoDB Transactions
+- [x] Redis Caching
+- [x] BullMQ Background Jobs
+- [x] Rate Limiting
+- [x] Centralized Error Handling
+- [x] Swagger API Documentation
+- [x] Dockerized Backend
+
+## What I Learned
+
+This project helped me understand:
+
+- Node.js backend architecture
+- Authentication & authorization
+- MongoDB data modeling
+- Redis caching strategies
+- Background job processing
+- Docker containerization
